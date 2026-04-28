@@ -1,0 +1,143 @@
+@import url("tldraw/tldraw.css");
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        --background: 248 250 252; /* slate-50 */
+        --foreground: 9 9 11; /* zinc-950 */
+        --card: 255 255 255;
+        --card-foreground: 9 9 11;
+        --border: 226 232 240; /* slate-200 */
+        --primary: 168 85 247; /* purple-500 */
+        --accent: 6 182 212; /* cyan-500 */
+        --danger: 239 68 68;
+        --hover-bg: 241 245 249; /* slate-100 */
+        --sb-track-color: #f1f5f9;
+        --sb-thumb-color: #a855f7;
+        --glass-bg: rgba(255, 255, 255, 0.7);
+        --glass-border: rgba(0, 0, 0, 0.1);
+    }
+
+    .dark {
+        --background: 9 9 11; /* zinc-950 */
+        --foreground: 248 250 252; /* slate-50 */
+        --card: 24 24 27; /* zinc-900 */
+        --card-foreground: 248 250 252;
+        --border: 39 39 42; /* zinc-800 */
+        --primary: 168 85 247;
+        --accent: 6 182 212;
+        --danger: 239 68 68;
+        --hover-bg: 39 39 42; /* zinc-800 */
+        --sb-track-color: #18181b;
+        --sb-thumb-color: #8b5cf6;
+        --glass-bg: rgba(255, 255, 255, 0.05);
+        --glass-border: rgba(255, 255, 255, 0.1);
+    }
+}
+
+@layer components {
+    .view-title {
+        @apply mb-2 w-full border-b pb-2 text-start text-lg font-semibold;
+        border-color: rgb(var(--border));
+        color: rgb(var(--foreground));
+        font-family: "Outfit", sans-serif;
+    }
+}
+
+body {
+    font-family: "Inter", sans-serif;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+    background-color: rgb(var(--background));
+    color: rgb(var(--foreground));
+    @apply transition-colors duration-300;
+
+    --sb-size: 5px;
+}
+
+::-webkit-scrollbar {
+    width: var(--sb-size);
+    height: var(--sb-size);
+}
+
+::-webkit-scrollbar-track {
+    background: var(--sb-track-color);
+    border-radius: 5px;
+    height: var(--sb-size);
+    width: var(--sb-size);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--sb-thumb-color);
+    border-radius: 5px;
+    height: var(--sb-size);
+}
+
+@supports not selector(::-webkit-scrollbar) {
+    body {
+        scrollbar-color: var(--sb-thumb-color) var(--sb-track-color);
+    }
+}
+
+@keyframes up-down {
+    0% {
+        transform: translateY(-20px);
+    }
+    100% {
+        transform: translateY(0px);
+    }
+}
+
+/* Editor */
+
+.cm-editor {
+    max-height: 93vh;
+}
+
+.cm-editor .cm-scroller {
+    font-family: "Space Mono", monospace;
+    /* min-height: 100vh; */
+}
+
+select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+}
+
+@media screen and (max-width: 768px) {
+    .cm-editor {
+        max-height: calc(93vh - 60px);
+    }
+
+    .cm-editor .cm-scroller {
+        min-height: calc(93vh - 60px);
+    }
+}
+
+/* Github Corner */
+
+.github-corner:hover .octo-arm {
+    animation: octocat-wave 560ms ease-in-out;
+}
+
+@keyframes octocat-wave {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    20%,
+    60% {
+        transform: rotate(-25deg);
+    }
+    40%,
+    80% {
+        transform: rotate(10deg);
+    }
+}

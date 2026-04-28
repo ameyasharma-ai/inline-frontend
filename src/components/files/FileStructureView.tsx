@@ -10,6 +10,7 @@ import { getIconClassName } from "@/utils/getIconClassName"
 import { Icon } from "@iconify/react"
 import cn from "classnames"
 import { MouseEvent, useEffect, useRef, useState } from "react"
+import toast from "react-hot-toast"
 import { AiOutlineFolder, AiOutlineFolderOpen } from "react-icons/ai"
 import { MdDelete } from "react-icons/md"
 import { PiPencilSimpleFill } from "react-icons/pi"
@@ -170,7 +171,7 @@ function Directory({
     const handleDeleteDirectory = (e: MouseEvent, id: Id) => {
         e.stopPropagation()
         setMenuOpen(false)
-        toast.custom((t) => (
+        toast.custom((t: any) => (
             <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1e1e2e] p-4 shadow-xl">
                 <p className="text-white">Are you sure you want to delete this directory?</p>
                 <div className="flex gap-2">
@@ -349,7 +350,7 @@ const File = ({
     const handleDeleteFile = (e: MouseEvent, id: Id) => {
         e.stopPropagation()
         setMenuOpen(false)
-        toast.custom((t) => (
+        toast.custom((t: any) => (
             <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#1e1e2e] p-4 shadow-xl">
                 <p className="text-white">Are you sure you want to delete this file?</p>
                 <div className="flex gap-2">

@@ -19,7 +19,6 @@ import { EditorView } from "@codemirror/view"
 import { useEffect, useMemo, useState, useRef, useCallback } from "react"
 import toast from "react-hot-toast"
 import { autocompletion, CompletionContext } from "@codemirror/autocomplete"
-import { EditorState } from "@codemirror/state"
 import axios from "axios"
 import { collaborativeHighlighting, updateRemoteUsers } from "./collaborativeHighlighting"
 

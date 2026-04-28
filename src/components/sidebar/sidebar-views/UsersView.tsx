@@ -16,7 +16,7 @@ function UsersView() {
     const { socket } = useSocket()
 
     const copyURL = async () => {
-        const url = `${window.location.origin}${window.location.pathname}?pwd=${encodeURIComponent(currentUser.password)}`
+        const url = `${window.location.origin}${window.location.pathname}?pwd=${encodeURIComponent(currentUser.password || "")}`
         try {
             await navigator.clipboard.writeText(url)
             toast.success("Room URL copied!")
@@ -27,7 +27,7 @@ function UsersView() {
     }
 
     const shareURL = async () => {
-        const url = `${window.location.origin}${window.location.pathname}?pwd=${encodeURIComponent(currentUser.password)}`
+        const url = `${window.location.origin}${window.location.pathname}?pwd=${encodeURIComponent(currentUser.password || "")}`
         try {
             await navigator.share({ title: "Workspace URL", url })
         } catch (error) {
@@ -38,7 +38,7 @@ function UsersView() {
 
     const copyPassword = async () => {
         try {
-            await navigator.clipboard.writeText(currentUser.password)
+            await navigator.clipboard.writeText(currentUser.password || "")
             toast.success("Password copied to clipboard")
         } catch (error) {
             toast.error("Unable to copy password")

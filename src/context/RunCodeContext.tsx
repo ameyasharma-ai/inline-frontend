@@ -96,7 +96,7 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
             }
 
             setIsRunning(true)
-            const { language, version } = selectedLanguage
+            const { version } = selectedLanguage
 
             const encodeBase64 = (str: string) => btoa(unescape(encodeURIComponent(str || "")))
             const decodeBase64 = (str: string) => {
@@ -110,7 +110,7 @@ const RunCodeContextProvider = ({ children }: { children: ReactNode }) => {
 
             const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000"
             const response = await axios.post(`${BACKEND_URL}/api/submissions`, {
-                source_code: encodeBase64(activeFile.content),
+                source_code: encodeBase64(activeFile.content || ""),
                 language_id: parseInt(version),
                 stdin: encodeBase64(input),
             })

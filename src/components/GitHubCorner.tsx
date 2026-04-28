@@ -7,7 +7,7 @@ function GitHubCorner() {
 
     return (
         <a
-            href="https://github.com/ameyasharma-ai/InLine"
+            href="https://github.com/ameyasharma-ai/inline-frontend"
             className="github-corner"
             aria-label="View source on GitHub"
             target="_blank"

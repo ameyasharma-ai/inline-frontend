@@ -132,6 +132,31 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         [setDrawingData],
     )
 
+    // Use refs for handlers to avoid re-attaching listeners when state changes
+    const handlersRef = useRef({
+        handleError,
+        handleUsernameExist,
+        handleJoinError,
+        handleJoiningAccept,
+        handleUserJoined,
+        handleUserLeft,
+        handleRequestDrawing,
+        handleDrawingSync,
+    })
+
+    useEffect(() => {
+        handlersRef.current = {
+            handleError,
+            handleUsernameExist,
+            handleJoinError,
+            handleJoiningAccept,
+            handleUserJoined,
+            handleUserLeft,
+            handleRequestDrawing,
+            handleDrawingSync,
+        }
+    }, [handleDrawingSync, handleError, handleJoinError, handleJoiningAccept, handleRequestDrawing, handleUserJoined, handleUserLeft, handleUsernameExist])
+
     useEffect(() => {
         const handleConnect = () => {
             toast.dismiss("server-connection")
@@ -141,39 +166,29 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         }
 
         socket.on("connect", handleConnect)
-        socket.on("connect_error", handleError)
-        socket.on("connect_failed", handleError)
-        socket.on(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
-        socket.on(SocketEvent.JOIN_ERROR, handleJoinError)
-        socket.on(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
-        socket.on(SocketEvent.USER_JOINED, handleUserJoined)
-        socket.on(SocketEvent.USER_DISCONNECTED, handleUserLeft)
-        socket.on(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
-        socket.on(SocketEvent.SYNC_DRAWING, handleDrawingSync)
+        socket.on("connect_error", (err) => handlersRef.current.handleError(err))
+        socket.on("connect_failed", (err) => handlersRef.current.handleError(err))
+        socket.on(SocketEvent.USERNAME_EXISTS, () => handlersRef.current.handleUsernameExist())
+        socket.on(SocketEvent.JOIN_ERROR, (data) => handlersRef.current.handleJoinError(data))
+        socket.on(SocketEvent.JOIN_ACCEPTED, (data) => handlersRef.current.handleJoiningAccept(data))
+        socket.on(SocketEvent.USER_JOINED, (data) => handlersRef.current.handleUserJoined(data))
+        socket.on(SocketEvent.USER_DISCONNECTED, (data) => handlersRef.current.handleUserLeft(data))
+        socket.on(SocketEvent.REQUEST_DRAWING, (data) => handlersRef.current.handleRequestDrawing(data))
+        socket.on(SocketEvent.SYNC_DRAWING, (data) => handlersRef.current.handleDrawingSync(data))
 
         return () => {
             socket.off("connect", handleConnect)
-            socket.off("connect_error", handleError)
-            socket.off("connect_failed", handleError)
-            socket.off(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
-            socket.off(SocketEvent.JOIN_ERROR, handleJoinError)
-            socket.off(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
-            socket.off(SocketEvent.USER_JOINED, handleUserJoined)
-            socket.off(SocketEvent.USER_DISCONNECTED, handleUserLeft)
-            socket.off(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
-            socket.off(SocketEvent.SYNC_DRAWING, handleDrawingSync)
+            socket.off("connect_error")
+            socket.off("connect_failed")
+            socket.off(SocketEvent.USERNAME_EXISTS)
+            socket.off(SocketEvent.JOIN_ERROR)
+            socket.off(SocketEvent.JOIN_ACCEPTED)
+            socket.off(SocketEvent.USER_JOINED)
+            socket.off(SocketEvent.USER_DISCONNECTED)
+            socket.off(SocketEvent.REQUEST_DRAWING)
+            socket.off(SocketEvent.SYNC_DRAWING)
         }
-    }, [
-        handleDrawingSync,
-        handleError,
-        handleJoiningAccept,
-        handleJoinError,
-        handleRequestDrawing,
-        handleUserLeft,
-        handleUsernameExist,
-        setUsers,
-        socket,
-    ])
+    }, [socket])
 
     return (
         <SocketContext.Provider

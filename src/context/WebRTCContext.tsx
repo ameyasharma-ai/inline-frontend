@@ -79,11 +79,11 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             })
             setLocalStream(stream)
 
-            if (incomingOffer) {
+            if (incomingOffer && incomingOffer.offer) {
                 // If joining an existing call from an offer
                 const { offer, senderId } = incomingOffer
                 const pc = createPeerConnection(senderId, stream)
-                await pc.setRemoteDescription(new RTCSessionDescription(offer))
+                await pc.setRemoteDescription(offer)
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
                 socket.emit(SocketEvent.SEND_RTC_ANSWER, {
@@ -141,6 +141,8 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit, senderId: string }) => {
+            if (!offer) return
+            
             if (!localStream) {
                 // Show invitation to join
                 const sender = users.find(u => u.socketId === senderId)
@@ -164,7 +166,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             }
 
             const pc = createPeerConnection(senderId, localStream)
-            await pc.setRemoteDescription(new RTCSessionDescription(offer))
+            await pc.setRemoteDescription(offer)
             const answer = await pc.createAnswer()
             await pc.setLocalDescription(answer)
             socket.emit(SocketEvent.SEND_RTC_ANSWER, {
@@ -174,13 +176,15 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         }
 
         const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit, senderId: string }) => {
+            if (!answer) return
             const pc = peerConnections.current[senderId]
             if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(answer))
+                await pc.setRemoteDescription(answer)
             }
         }
 
         const handleIceCandidate = async ({ candidate, senderId }: { candidate: RTCIceCandidateInit, senderId: string }) => {
+            if (!candidate) return
             const pc = peerConnections.current[senderId]
             if (pc) {
                 await pc.addIceCandidate(new RTCIceCandidate(candidate))

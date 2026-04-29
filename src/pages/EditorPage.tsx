@@ -43,7 +43,10 @@ function EditorPage() {
                         navigate("/")
                     }
                 } catch (error) {
-                    toast.error("Failed to connect to server")
+                    toast.error(
+                        "The server is currently initializing. Please allow up to 60 seconds for the service to start and try again.",
+                        { id: "server-connection", duration: Infinity }
+                    )
                     navigate("/")
                 }
             }

@@ -63,7 +63,10 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
             console.log("socket error", err)
             setStatus(USER_STATUS.CONNECTION_FAILED)
             toast.dismiss()
-            toast.error("Failed to connect to the server")
+            toast.error(
+                "The server is currently initializing. Please allow up to 60 seconds for the service to start and try again.",
+                { id: "server-connection", duration: Infinity }
+            )
         },
         [setStatus],
     )
@@ -124,6 +127,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const handleConnect = () => {
+            toast.dismiss("server-connection")
             if (statusRef.current === USER_STATUS.JOINED && currentUserRef.current.roomId) {
                 socket.emit(SocketEvent.JOIN_REQUEST, currentUserRef.current)
             }

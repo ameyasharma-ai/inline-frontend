@@ -21,7 +21,7 @@ const ConnectionError = () => {
     return (
         <>
             <span className="whitespace-break-spaces text-lg font-medium text-slate-300">
-                Oops! Something went wrong. Please try again
+                The server is currently initializing. Please allow up to 60 seconds for the service to start and try again.
             </span>
             <div className="flex flex-wrap justify-center gap-4">
                 <button

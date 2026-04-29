@@ -35,7 +35,7 @@ export const useWebRTC = () => {
 
 export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     const { socket } = useSocket()
-    const { users, currentUser } = useAppContext()
+    const { users } = useAppContext()
     const [localStream, setLocalStream] = useState<MediaStream | null>(null)
     const [remoteStreams, setRemoteStreams] = useState<{ [socketId: string]: MediaStream }>({})
     const [isMuted, setIsMuted] = useState(false)

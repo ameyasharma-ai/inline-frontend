@@ -42,11 +42,16 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     const [isCameraOff, setIsCameraOff] = useState(false)
     const peerConnections = useRef<{ [socketId: string]: RTCPeerConnection }>({})
     const iceCandidatesQueue = useRef<{ [socketId: string]: RTCIceCandidateInit[] }>({})
+    const makingOffer = useRef<{ [socketId: string]: boolean }>({})
+    const ignoreOffer = useRef<{ [socketId: string]: boolean }>({})
 
     const configuration: RTCConfiguration = {
         iceServers: [
             { urls: "stun:stun.l.google.com:19302" },
             { urls: "stun:stun1.l.google.com:19302" },
+            { urls: "stun:stun2.l.google.com:19302" },
+            { urls: "stun:stun3.l.google.com:19302" },
+            { urls: "stun:stun4.l.google.com:19302" },
         ],
     }
 
@@ -60,7 +65,9 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                     try {
                         await pc.addIceCandidate(new RTCIceCandidate(candidate))
                     } catch (e) {
-                        console.error("Error adding queued ICE candidate", e)
+                        if (!ignoreOffer.current[socketId]) {
+                            console.error("Error adding queued ICE candidate", e)
+                        }
                     }
                 }
             }
@@ -68,15 +75,33 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }, [])
 
     const createPeerConnection = useCallback((targetId: string, stream: MediaStream) => {
+        // If connection exists, close it
         if (peerConnections.current[targetId]) {
             peerConnections.current[targetId].close()
         }
 
         const pc = new RTCPeerConnection(configuration)
 
+        // Add local tracks
         stream.getTracks().forEach((track) => {
             pc.addTrack(track, stream)
         })
+
+        // Perfect Negotiation: On Negotiation Needed
+        pc.onnegotiationneeded = async () => {
+            try {
+                makingOffer.current[targetId] = true
+                await pc.setLocalDescription()
+                socket.emit(SocketEvent.SEND_RTC_OFFER, {
+                    offer: pc.localDescription,
+                    targetId,
+                })
+            } catch (err) {
+                console.error("Negotiation error:", err)
+            } finally {
+                makingOffer.current[targetId] = false
+            }
+        }
 
         pc.onicecandidate = (event) => {
             if (event.candidate) {
@@ -88,10 +113,21 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         }
 
         pc.ontrack = (event) => {
-            setRemoteStreams((prev) => ({
-                ...prev,
-                [targetId]: event.streams[0],
-            }))
+            setRemoteStreams((prev) => {
+                const existingStream = prev[targetId]
+                if (existingStream) {
+                    event.streams[0].getTracks().forEach(track => {
+                        if (!existingStream.getTracks().find(t => t.id === track.id)) {
+                            existingStream.addTrack(track)
+                        }
+                    })
+                    return { ...prev }
+                }
+                return {
+                    ...prev,
+                    [targetId]: event.streams[0],
+                }
+            })
         }
 
         pc.oniceconnectionstatechange = () => {
@@ -118,13 +154,25 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
 
     const startCall = useCallback(async (incomingOffer?: { offer: RTCSessionDescriptionInit, senderId: string }) => {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: true,
-                audio: true,
-            })
+            let stream: MediaStream
+            try {
+                // Try Full Media
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            } catch (e) {
+                try {
+                    // Try Audio Only
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                } catch (e2) {
+                    // Try Video Only
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                }
+            }
+            
             setLocalStream(stream)
 
             if (incomingOffer && incomingOffer.offer) {
+                // If joining from an offer, handleOffer will take care of it via state ref update
+                // But we manually trigger the peer connection here for the join button flow
                 const { offer, senderId } = incomingOffer
                 const pc = createPeerConnection(senderId, stream)
                 await pc.setRemoteDescription(offer)
@@ -136,34 +184,31 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                     targetId: senderId,
                 })
             } else {
-                users.forEach(async (user) => {
-                    if (user.socketId !== socket.id) {
-                        const pc = createPeerConnection(user.socketId, stream)
-                        const offer = await pc.createOffer()
-                        await pc.setLocalDescription(offer)
-                        socket.emit(SocketEvent.SEND_RTC_OFFER, {
-                            offer,
-                            targetId: user.socketId,
-                        })
+                // Start call with everyone else
+                usersRef.current.forEach((user) => {
+                    if (socket.id && user.socketId !== socket.id) {
+                        createPeerConnection(user.socketId, stream)
                     }
                 })
             }
         } catch (error) {
             console.error("Error starting call:", error)
-            toast.error("Could not access camera/microphone")
+            toast.error("Could not access media devices")
         }
-    }, [socket, users, createPeerConnection, processIceCandidates])
+    }, [socket, createPeerConnection, processIceCandidates])
 
     const endCall = useCallback(() => {
-        if (localStream) {
-            localStream.getTracks().forEach((track) => track.stop())
+        if (localStreamRef.current) {
+            localStreamRef.current.getTracks().forEach((track) => track.stop())
             setLocalStream(null)
         }
         Object.values(peerConnections.current).forEach((pc) => pc.close())
         peerConnections.current = {}
         iceCandidatesQueue.current = {}
+        makingOffer.current = {}
+        ignoreOffer.current = {}
         setRemoteStreams({})
-    }, [localStream])
+    }, [])
 
     // Prune connections when users leave
     useEffect(() => {
@@ -204,17 +249,29 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
 
     useEffect(() => {
         const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
-            if (!offer) return
-            const currentStream = localStreamRef.current
+            try {
+                const pc = peerConnections.current[senderId]
+                const currentStream = localStreamRef.current
+                
+                // Perfect Negotiation Logic
+                if (!socket.id) return
+                const polite = socket.id.localeCompare(senderId) > 0
+                const offerCollision = makingOffer.current[senderId] || pc?.signalingState !== "stable"
+                
+                ignoreOffer.current[senderId] = !polite && offerCollision
+                if (ignoreOffer.current[senderId]) {
+                    console.log("Ignoring offer due to collision (impolite)")
+                    return
+                }
 
-            if (!currentStream) {
-                const sender = usersRef.current.find((u) => u.socketId === senderId)
-                const senderName = sender ? sender.username : "Someone"
+                if (!currentStream) {
+                    // Show invitation if not in a call
+                    const sender = usersRef.current.find((u) => u.socketId === senderId)
+                    const senderName = sender ? sender.username : "Someone"
 
-                toast(
-                    (t) => (
+                    toast((t) => (
                         <div className="flex items-center gap-4">
-                            <span>{senderName} is in a video call. Join them?</span>
+                            <span>{senderName} is calling...</span>
                             <button
                                 onClick={() => {
                                     toast.dismiss(t.id)
@@ -225,47 +282,48 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                                 Join
                             </button>
                         </div>
-                    ),
-                    { duration: 10000, id: `call-invite-${senderId}` },
-                )
-                return
-            }
+                    ), { duration: 15000, id: `call-invite-${senderId}` })
+                    return
+                }
 
-            const pc = createPeerConnection(senderId, currentStream)
-            await pc.setRemoteDescription(offer)
-            await processIceCandidates(senderId)
-            const answer = await pc.createAnswer()
-            await pc.setLocalDescription(answer)
-            socket.emit(SocketEvent.SEND_RTC_ANSWER, {
-                answer,
-                targetId: senderId,
-            })
+                const activePc = pc || createPeerConnection(senderId, currentStream)
+                await activePc.setRemoteDescription(offer)
+                await processIceCandidates(senderId)
+                await activePc.setLocalDescription()
+                
+                socket.emit(SocketEvent.SEND_RTC_ANSWER, {
+                    answer: activePc.localDescription,
+                    targetId: senderId,
+                })
+            } catch (err) {
+                console.error("Offer error:", err)
+            }
         }
 
         const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit; senderId: string }) => {
-            if (!answer) return
-            const pc = peerConnections.current[senderId]
-            if (pc && pc.signalingState !== "closed") {
-                await pc.setRemoteDescription(answer)
-                await processIceCandidates(senderId)
+            try {
+                const pc = peerConnections.current[senderId]
+                if (pc) {
+                    await pc.setRemoteDescription(answer)
+                    await processIceCandidates(senderId)
+                }
+            } catch (err) {
+                console.error("Answer error:", err)
             }
         }
 
-        const handleIceCandidate = async ({
-            candidate,
-            senderId,
-        }: {
-            candidate: RTCIceCandidateInit
-            senderId: string
-        }) => {
-            if (!candidate) return
-
-            if (!iceCandidatesQueue.current[senderId]) {
-                iceCandidatesQueue.current[senderId] = []
+        const handleIceCandidate = async ({ candidate, senderId }: { candidate: RTCIceCandidateInit; senderId: string }) => {
+            try {
+                if (!iceCandidatesQueue.current[senderId]) {
+                    iceCandidatesQueue.current[senderId] = []
+                }
+                iceCandidatesQueue.current[senderId].push(candidate)
+                await processIceCandidates(senderId)
+            } catch (err) {
+                if (!ignoreOffer.current[senderId]) {
+                    console.error("ICE error:", err)
+                }
             }
-            iceCandidatesQueue.current[senderId].push(candidate)
-
-            await processIceCandidates(senderId)
         }
 
         socket.on(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)

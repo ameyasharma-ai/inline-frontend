@@ -108,6 +108,14 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         return pc
     }, [socket])
 
+    const localStreamRef = useRef<MediaStream | null>(localStream)
+    const usersRef = useRef(users)
+
+    useEffect(() => {
+        localStreamRef.current = localStream
+        usersRef.current = users
+    }, [localStream, users])
+
     const startCall = useCallback(async (incomingOffer?: { offer: RTCSessionDescriptionInit, senderId: string }) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -195,31 +203,35 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }
 
     useEffect(() => {
-        const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit, senderId: string }) => {
+        const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
             if (!offer) return
-            
-            if (!localStream) {
-                const sender = users.find(u => u.socketId === senderId)
+            const currentStream = localStreamRef.current
+
+            if (!currentStream) {
+                const sender = usersRef.current.find((u) => u.socketId === senderId)
                 const senderName = sender ? sender.username : "Someone"
-                
-                toast((t) => (
-                    <div className="flex items-center gap-4">
-                        <span>{senderName} is in a video call. Join them?</span>
-                        <button
-                            onClick={() => {
-                                toast.dismiss(t.id)
-                                startCall({ offer, senderId })
-                            }}
-                            className="bg-primary text-black px-3 py-1 rounded font-bold text-sm transition-all hover:bg-primary/80"
-                        >
-                            Join
-                        </button>
-                    </div>
-                ), { duration: 10000, id: `call-invite-${senderId}` })
+
+                toast(
+                    (t) => (
+                        <div className="flex items-center gap-4">
+                            <span>{senderName} is in a video call. Join them?</span>
+                            <button
+                                onClick={() => {
+                                    toast.dismiss(t.id)
+                                    startCall({ offer, senderId })
+                                }}
+                                className="bg-primary rounded px-3 py-1 font-bold text-sm text-black transition-all hover:bg-primary/80"
+                            >
+                                Join
+                            </button>
+                        </div>
+                    ),
+                    { duration: 10000, id: `call-invite-${senderId}` },
+                )
                 return
             }
 
-            const pc = createPeerConnection(senderId, localStream)
+            const pc = createPeerConnection(senderId, currentStream)
             await pc.setRemoteDescription(offer)
             await processIceCandidates(senderId)
             const answer = await pc.createAnswer()
@@ -230,23 +242,29 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             })
         }
 
-        const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit, senderId: string }) => {
+        const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit; senderId: string }) => {
             if (!answer) return
             const pc = peerConnections.current[senderId]
-            if (pc) {
+            if (pc && pc.signalingState !== "closed") {
                 await pc.setRemoteDescription(answer)
                 await processIceCandidates(senderId)
             }
         }
 
-        const handleIceCandidate = async ({ candidate, senderId }: { candidate: RTCIceCandidateInit, senderId: string }) => {
+        const handleIceCandidate = async ({
+            candidate,
+            senderId,
+        }: {
+            candidate: RTCIceCandidateInit
+            senderId: string
+        }) => {
             if (!candidate) return
-            
+
             if (!iceCandidatesQueue.current[senderId]) {
                 iceCandidatesQueue.current[senderId] = []
             }
             iceCandidatesQueue.current[senderId].push(candidate)
-            
+
             await processIceCandidates(senderId)
         }
 
@@ -255,11 +273,11 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         socket.on(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
 
         return () => {
-            socket.off(SocketEvent.RECEIVE_RTC_OFFER)
-            socket.off(SocketEvent.RECEIVE_RTC_ANSWER)
-            socket.off(SocketEvent.RECEIVE_ICE_CANDIDATE)
+            socket.off(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)
+            socket.off(SocketEvent.RECEIVE_RTC_ANSWER, handleAnswer)
+            socket.off(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
         }
-    }, [socket, localStream, createPeerConnection, startCall, users])
+    }, [socket, createPeerConnection, startCall, processIceCandidates])
 
     return (
         <WebRTCContext.Provider

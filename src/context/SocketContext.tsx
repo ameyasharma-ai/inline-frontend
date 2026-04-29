@@ -103,6 +103,14 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         [currentUser.password, setCurrentUser, setStatus, setUsers],
     )
 
+    const handleUserJoined = useCallback(
+        ({ user }: { user: User }) => {
+            toast.success(`${user.username} joined the room`)
+            setUsers((prev) => [...prev, user])
+        },
+        [setUsers],
+    )
+
     const handleUserLeft = useCallback(
         ({ user }: { user: User }) => {
             toast.success(`${user.username} left the room`)
@@ -139,6 +147,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         socket.on(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
         socket.on(SocketEvent.JOIN_ERROR, handleJoinError)
         socket.on(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
+        socket.on(SocketEvent.USER_JOINED, handleUserJoined)
         socket.on(SocketEvent.USER_DISCONNECTED, handleUserLeft)
         socket.on(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
         socket.on(SocketEvent.SYNC_DRAWING, handleDrawingSync)

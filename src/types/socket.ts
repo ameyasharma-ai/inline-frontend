@@ -28,6 +28,12 @@ enum SocketEvent {
     REQUEST_DRAWING = "request-drawing",
     SYNC_DRAWING = "sync-drawing",
     DRAWING_UPDATE = "drawing-update",
+    SEND_RTC_OFFER = "send-rtc-offer",
+    RECEIVE_RTC_OFFER = "receive-rtc-offer",
+    SEND_RTC_ANSWER = "send-rtc-answer",
+    RECEIVE_RTC_ANSWER = "receive-rtc-answer",
+    SEND_ICE_CANDIDATE = "send-ice-candidate",
+    RECEIVE_ICE_CANDIDATE = "receive-ice-candidate",
 }
 
 interface SocketContext {

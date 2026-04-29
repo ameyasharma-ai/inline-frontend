@@ -73,6 +73,10 @@ function Sidebar() {
                     icon={viewIcons[VIEWS.CLIENTS]}
                 />
                 <SidebarButton
+                    viewName={VIEWS.VIDEO}
+                    icon={viewIcons[VIEWS.VIDEO]}
+                />
+                <SidebarButton
                     viewName={VIEWS.SETTINGS}
                     icon={viewIcons[VIEWS.SETTINGS]}
                 />

@@ -141,3 +141,8 @@ select {
         transform: rotate(10deg);
     }
 }
+
+/* WebRTC Video Mirroring */
+.mirror {
+    transform: scaleX(-1);
+}

@@ -104,7 +104,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
     )
 
     const handleUserJoined = useCallback(
-        ({ user }: { user: User }) => {
+        ({ user }: { user: RemoteUser }) => {
             toast.success(`${user.username} joined the room`)
             setUsers((prev) => [...prev, user])
         },
@@ -112,11 +112,11 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
     )
 
     const handleUserLeft = useCallback(
-        ({ user }: { user: User }) => {
+        ({ user }: { user: RemoteUser }) => {
             toast.success(`${user.username} left the room`)
-            setUsers(users.filter((u: User) => u.username !== user.username))
+            setUsers((prev) => prev.filter((u) => u.username !== user.username))
         },
-        [setUsers, users],
+        [setUsers],
     )
 
     const handleRequestDrawing = useCallback(

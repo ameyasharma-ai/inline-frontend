@@ -7,15 +7,6 @@ export const tooltipStyles = {
     fontSize: '12px',
     fontWeight: '500',
     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)',
-export const tooltipStyles = {
-    backgroundColor: 'rgba(24, 24, 27, 0.9)',
-    backdropFilter: 'blur(8px)',
-    padding: '6px 10px',
-    borderRadius: '8px',
-    color: '#f8fafc',
-    fontSize: '12px',
-    fontWeight: '500',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -1px rgba(0, 0, 0, 0.3)',
 }
 
 export const buttonStyles = {

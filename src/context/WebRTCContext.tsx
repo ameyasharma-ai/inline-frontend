@@ -153,38 +153,42 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }, [localStream, users])
 
     const startCall = useCallback(async (incomingOffer?: { offer: RTCSessionDescriptionInit, senderId: string }) => {
+        console.log("[WebRTC] startCall triggered", incomingOffer ? "Incoming Offer" : "Initiator")
         try {
-            let stream: MediaStream
-            try {
-                // Try Full Media
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-            } catch (e) {
+            let stream = localStreamRef.current
+
+            if (!stream) {
+                console.log("[WebRTC] No existing stream, acquiring media...")
                 try {
-                    // Try Audio Only
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-                } catch (e2) {
-                    // Try Video Only
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                } catch (e) {
+                    console.warn("[WebRTC] Full media failed, trying audio only...")
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+                    } catch (e2) {
+                        console.warn("[WebRTC] Audio only failed, trying video only...")
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true })
+                    }
                 }
+                setLocalStream(stream)
+                console.log("[WebRTC] Media acquired successfully")
+            } else {
+                console.log("[WebRTC] Reusing existing local stream")
             }
             
-            setLocalStream(stream)
-
             if (incomingOffer && incomingOffer.offer) {
-                // If joining from an offer, handleOffer will take care of it via state ref update
-                // But we manually trigger the peer connection here for the join button flow
                 const { offer, senderId } = incomingOffer
+                console.log(`[WebRTC] Answering incoming offer from ${senderId}`)
                 const pc = createPeerConnection(senderId, stream)
                 await pc.setRemoteDescription(offer)
                 await processIceCandidates(senderId)
-                const answer = await pc.createAnswer()
-                await pc.setLocalDescription(answer)
+                await pc.setLocalDescription()
                 socket.emit(SocketEvent.SEND_RTC_ANSWER, {
-                    answer,
+                    answer: pc.localDescription,
                     targetId: senderId,
                 })
             } else {
-                // Start call with everyone else
+                console.log("[WebRTC] Initiating P2P connections to peers...")
                 usersRef.current.forEach((user) => {
                     if (socket.id && user.socketId !== socket.id) {
                         createPeerConnection(user.socketId, stream)
@@ -192,7 +196,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                 })
             }
         } catch (error) {
-            console.error("Error starting call:", error)
+            console.error("[WebRTC] Failed to start call:", error)
             toast.error("Could not access media devices")
         }
     }, [socket, createPeerConnection, processIceCandidates])
@@ -250,6 +254,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
             try {
+                console.log(`[WebRTC] Received RTC Offer from ${senderId}`)
                 const pc = peerConnections.current[senderId]
                 const currentStream = localStreamRef.current
                 
@@ -302,6 +307,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
 
         const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit; senderId: string }) => {
             try {
+                console.log(`[WebRTC] Received RTC Answer from ${senderId}`)
                 const pc = peerConnections.current[senderId]
                 if (pc) {
                     await pc.setRemoteDescription(answer)
@@ -314,6 +320,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
 
         const handleIceCandidate = async ({ candidate, senderId }: { candidate: RTCIceCandidateInit; senderId: string }) => {
             try {
+                console.log(`[WebRTC] Received ICE candidate from ${senderId}`)
                 if (!iceCandidatesQueue.current[senderId]) {
                     iceCandidatesQueue.current[senderId] = []
                 }

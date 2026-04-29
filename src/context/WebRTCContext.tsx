@@ -152,56 +152,46 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         usersRef.current = users
     }, [localStream, users])
 
-    const startCall = useCallback(async (incomingOffer?: { offer: RTCSessionDescriptionInit, senderId: string }) => {
-        console.log("[WebRTC] startCall triggered", incomingOffer ? "Incoming Offer" : "Initiator")
+    const startCall = useCallback(async () => {
+        console.log("[WebRTC] Initiating call...")
         try {
             let stream = localStreamRef.current
-
             if (!stream) {
-                console.log("[WebRTC] No existing stream, acquiring media...")
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-                } catch (e) {
-                    console.warn("[WebRTC] Full media failed, trying audio only...")
-                    try {
-                        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-                    } catch (e2) {
-                        console.warn("[WebRTC] Audio only failed, trying video only...")
-                        stream = await navigator.mediaDevices.getUserMedia({ video: true })
-                    }
-                }
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 setLocalStream(stream)
-                console.log("[WebRTC] Media acquired successfully")
-            } else {
-                console.log("[WebRTC] Reusing existing local stream")
             }
             
-            if (incomingOffer && incomingOffer.offer) {
-                const { offer, senderId } = incomingOffer
-                console.log(`[WebRTC] Answering incoming offer from ${senderId}`)
-                const pc = createPeerConnection(senderId, stream)
-                await pc.setRemoteDescription(offer)
-                await processIceCandidates(senderId)
-                await pc.setLocalDescription()
-                socket.emit(SocketEvent.SEND_RTC_ANSWER, {
-                    answer: pc.localDescription,
-                    targetId: senderId,
-                })
-            } else {
-                console.log("[WebRTC] Initiating P2P connections to peers...")
-                usersRef.current.forEach((user) => {
-                    if (socket.id && user.socketId !== socket.id) {
-                        createPeerConnection(user.socketId, stream)
-                    }
-                })
+            // Notify everyone in the room that I'm starting a call
+            const roomId = usersRef.current[0]?.roomId
+            if (roomId) {
+                console.log("[WebRTC] Broadcasting call invitation to room")
+                socket.emit("RTC_CALL_START", { roomId })
             }
         } catch (error) {
             console.error("[WebRTC] Failed to start call:", error)
             toast.error("Could not access media devices")
         }
-    }, [socket, createPeerConnection, processIceCandidates])
+    }, [socket])
+
+    const joinCall = useCallback(async (senderId: string) => {
+        console.log(`[WebRTC] Joining call from ${senderId}`)
+        try {
+            let stream = localStreamRef.current
+            if (!stream) {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                setLocalStream(stream)
+            }
+            
+            // Tell the initiator I am ready to receive their offer
+            socket.emit("RTC_PROCEED_OFFER", { targetId: senderId })
+        } catch (error) {
+            console.error("[WebRTC] Failed to join call:", error)
+            toast.error("Could not access media devices")
+        }
+    }, [socket])
 
     const endCall = useCallback(() => {
+        console.log("[WebRTC] Ending call...")
         if (localStreamRef.current) {
             localStreamRef.current.getTracks().forEach((track) => track.stop())
             setLocalStream(null)
@@ -252,46 +242,49 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }
 
     useEffect(() => {
+        const handleInvite = ({ senderId, senderName }: { senderId: string; senderName: string }) => {
+            console.log(`[WebRTC] Received call invitation from ${senderName}`)
+            toast((t) => (
+                <div className="flex items-center gap-4">
+                    <span>{senderName} is in a video call. Join?</span>
+                    <button
+                        onClick={() => {
+                            toast.dismiss(t.id)
+                            joinCall(senderId)
+                        }}
+                        className="bg-primary rounded px-3 py-1 font-bold text-sm text-black transition-all hover:bg-primary/80"
+                    >
+                        Join
+                    </button>
+                </div>
+            ), { duration: 15000, id: `invite-${senderId}` })
+        }
+
+        const handleReady = ({ senderId }: { senderId: string }) => {
+            console.log(`[WebRTC] Peer ${senderId} is ready, initiating connection`)
+            const stream = localStreamRef.current
+            if (stream) {
+                createPeerConnection(senderId, stream)
+            }
+        }
+
         const handleOffer = async ({ offer, senderId }: { offer: RTCSessionDescriptionInit; senderId: string }) => {
             try {
-                console.log(`[WebRTC] Received RTC Offer from ${senderId}`)
+                console.log(`[WebRTC] Received offer from ${senderId}`)
+                const stream = localStreamRef.current
+                if (!stream || !socket.id) return
+
                 const pc = peerConnections.current[senderId]
-                const currentStream = localStreamRef.current
-                
-                // Perfect Negotiation Logic
-                if (!socket.id) return
                 const polite = socket.id.localeCompare(senderId) > 0
                 const offerCollision = makingOffer.current[senderId] || pc?.signalingState !== "stable"
                 
                 ignoreOffer.current[senderId] = !polite && offerCollision
                 if (ignoreOffer.current[senderId]) {
-                    console.log("Ignoring offer due to collision (impolite)")
+                    console.log(`[WebRTC] Ignoring offer from ${senderId} (collision)`)
                     return
                 }
 
-                if (!currentStream) {
-                    // Show invitation if not in a call
-                    const sender = usersRef.current.find((u) => u.socketId === senderId)
-                    const senderName = sender ? sender.username : "Someone"
-
-                    toast((t) => (
-                        <div className="flex items-center gap-4">
-                            <span>{senderName} is calling...</span>
-                            <button
-                                onClick={() => {
-                                    toast.dismiss(t.id)
-                                    startCall({ offer, senderId })
-                                }}
-                                className="bg-primary rounded px-3 py-1 font-bold text-sm text-black transition-all hover:bg-primary/80"
-                            >
-                                Join
-                            </button>
-                        </div>
-                    ), { duration: 15000, id: `call-invite-${senderId}` })
-                    return
-                }
-
-                const activePc = pc || createPeerConnection(senderId, currentStream)
+                const activePc = pc || createPeerConnection(senderId, stream)
                 await activePc.setRemoteDescription(offer)
                 await processIceCandidates(senderId)
                 await activePc.setLocalDescription()
@@ -301,26 +294,25 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                     targetId: senderId,
                 })
             } catch (err) {
-                console.error("Offer error:", err)
+                console.error("[WebRTC] Offer error:", err)
             }
         }
 
         const handleAnswer = async ({ answer, senderId }: { answer: RTCSessionDescriptionInit; senderId: string }) => {
             try {
-                console.log(`[WebRTC] Received RTC Answer from ${senderId}`)
+                console.log(`[WebRTC] Received answer from ${senderId}`)
                 const pc = peerConnections.current[senderId]
                 if (pc) {
                     await pc.setRemoteDescription(answer)
                     await processIceCandidates(senderId)
                 }
             } catch (err) {
-                console.error("Answer error:", err)
+                console.error("[WebRTC] Answer error:", err)
             }
         }
 
         const handleIceCandidate = async ({ candidate, senderId }: { candidate: RTCIceCandidateInit; senderId: string }) => {
             try {
-                console.log(`[WebRTC] Received ICE candidate from ${senderId}`)
                 if (!iceCandidatesQueue.current[senderId]) {
                     iceCandidatesQueue.current[senderId] = []
                 }
@@ -328,21 +320,25 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                 await processIceCandidates(senderId)
             } catch (err) {
                 if (!ignoreOffer.current[senderId]) {
-                    console.error("ICE error:", err)
+                    console.error("[WebRTC] ICE error:", err)
                 }
             }
         }
 
+        socket.on("RTC_CALL_INVITE", handleInvite)
+        socket.on("RTC_READY_TO_RECEIVE", handleReady)
         socket.on(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)
         socket.on(SocketEvent.RECEIVE_RTC_ANSWER, handleAnswer)
         socket.on(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
 
         return () => {
-            socket.off(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)
-            socket.off(SocketEvent.RECEIVE_RTC_ANSWER, handleAnswer)
-            socket.off(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
+            socket.off("RTC_CALL_INVITE")
+            socket.off("RTC_READY_TO_RECEIVE")
+            socket.off(SocketEvent.RECEIVE_RTC_OFFER)
+            socket.off(SocketEvent.RECEIVE_RTC_ANSWER)
+            socket.off(SocketEvent.RECEIVE_ICE_CANDIDATE)
         }
-    }, [socket, createPeerConnection, startCall, processIceCandidates])
+    }, [socket, createPeerConnection, joinCall, processIceCandidates])
 
     return (
         <WebRTCContext.Provider

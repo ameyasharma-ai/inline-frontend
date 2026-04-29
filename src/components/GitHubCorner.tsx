@@ -17,16 +17,13 @@ function GitHubCorner() {
             }}
         >
             <svg
-                width="150"
-                height="100"
+                width="80"
+                height="80"
                 viewBox="0 0 250 250"
-                className="absolute right-0 top-0 z-10 border-none bg-primary text-gray-900 dark:text-gray-100"
+                className="absolute right-0 top-0 z-50 border-none text-primary"
                 aria-hidden="true"
-                style={{
-                    color: "#151513",
-                    transform: "rotate(45deg) translate(12%,-80%) scale(0.8)",
-                }}
             >
+                <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" fill="currentColor"></path>
                 <g
                     style={{
                         transform: "rotate(-45deg) translate(0%,50%)",

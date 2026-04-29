@@ -153,14 +153,15 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
 
         return () => {
             socket.off("connect", handleConnect)
-            socket.off("connect_error")
-            socket.off("connect_failed")
-            socket.off(SocketEvent.USERNAME_EXISTS)
-            socket.off(SocketEvent.JOIN_ERROR)
-            socket.off(SocketEvent.JOIN_ACCEPTED)
-            socket.off(SocketEvent.USER_DISCONNECTED)
-            socket.off(SocketEvent.REQUEST_DRAWING)
-            socket.off(SocketEvent.SYNC_DRAWING)
+            socket.off("connect_error", handleError)
+            socket.off("connect_failed", handleError)
+            socket.off(SocketEvent.USERNAME_EXISTS, handleUsernameExist)
+            socket.off(SocketEvent.JOIN_ERROR, handleJoinError)
+            socket.off(SocketEvent.JOIN_ACCEPTED, handleJoiningAccept)
+            socket.off(SocketEvent.USER_JOINED, handleUserJoined)
+            socket.off(SocketEvent.USER_DISCONNECTED, handleUserLeft)
+            socket.off(SocketEvent.REQUEST_DRAWING, handleRequestDrawing)
+            socket.off(SocketEvent.SYNC_DRAWING, handleDrawingSync)
         }
     }, [
         handleDrawingSync,

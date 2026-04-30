@@ -19,8 +19,10 @@ interface WebRTCContextType {
     isCameraOff: boolean
     toggleMute: () => void
     toggleCamera: () => void
-    startCall: () => void
+    startCall: (voiceOnly?: boolean) => void
+    joinCall: (targetId?: string) => void
     endCall: () => void
+    isCallActive: boolean
 }
 
 const WebRTCContext = createContext<WebRTCContextType | null>(null)
@@ -40,6 +42,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     const [remoteStreams, setRemoteStreams] = useState<{ [socketId: string]: MediaStream }>({})
     const [isMuted, setIsMuted] = useState(false)
     const [isCameraOff, setIsCameraOff] = useState(false)
+    const [isCallActive, setIsCallActive] = useState(false)
     const peerConnections = useRef<{ [socketId: string]: RTCPeerConnection }>({})
     const iceCandidatesQueue = useRef<{ [socketId: string]: RTCIceCandidateInit[] }>({})
     const makingOffer = useRef<{ [socketId: string]: boolean }>({})
@@ -152,19 +155,22 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         usersRef.current = users
     }, [localStream, users])
 
-    const startCall = useCallback(async () => {
-        console.log("[WebRTC] Initiating call...")
+    const startCall = useCallback(async (voiceOnly: boolean = false) => {
+        console.log(`[WebRTC] Initiating ${voiceOnly ? 'voice' : 'video'} call...`)
         try {
             let stream = localStreamRef.current
             if (!stream) {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: !voiceOnly, 
+                    audio: true 
+                })
                 setLocalStream(stream)
+                setIsCameraOff(voiceOnly)
             }
             
-            // Notify everyone in the room that I'm starting a call
+            setIsCallActive(true)
             const roomId = usersRef.current[0]?.roomId
             if (roomId) {
-                console.log("[WebRTC] Broadcasting call invitation to room")
                 socket.emit("RTC_CALL_START", { roomId })
             }
         } catch (error) {
@@ -173,17 +179,28 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         }
     }, [socket])
 
-    const joinCall = useCallback(async (senderId: string) => {
-        console.log(`[WebRTC] Joining call from ${senderId}`)
+    const joinCall = useCallback(async (targetId?: string) => {
+        console.log(`[WebRTC] Joining call... Target: ${targetId || 'Room'}`)
         try {
             let stream = localStreamRef.current
             if (!stream) {
+                // Check if others are in voice-only or video
                 stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
                 setLocalStream(stream)
             }
             
-            // Tell the initiator I am ready to receive their offer
-            socket.emit("RTC_PROCEED_OFFER", { targetId: senderId })
+            setIsCallActive(true)
+            
+            if (targetId) {
+                socket.emit("RTC_PROCEED_OFFER", { targetId })
+            } else {
+                // If no specific target, broadcast readiness to everyone in the room
+                usersRef.current.forEach(u => {
+                    if (u.socketId !== socket.id) {
+                        socket.emit("RTC_PROCEED_OFFER", { targetId: u.socketId })
+                    }
+                })
+            }
         } catch (error) {
             console.error("[WebRTC] Failed to join call:", error)
             toast.error("Could not access media devices")
@@ -202,6 +219,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         makingOffer.current = {}
         ignoreOffer.current = {}
         setRemoteStreams({})
+        setIsCallActive(false)
     }, [])
 
     // Prune connections when users leave
@@ -242,7 +260,15 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }
 
     useEffect(() => {
+        const handleJoinAccepted = ({ hasActiveCall }: { hasActiveCall: boolean }) => {
+            if (hasActiveCall) {
+                setIsCallActive(true)
+                toast("There is an active call in this room.", { icon: "📞", id: "active-call" })
+            }
+        }
+
         const handleInvite = ({ senderId, senderName }: { senderId: string; senderName: string }) => {
+            setIsCallActive(true)
             console.log(`[WebRTC] Received call invitation from ${senderName}`)
             toast((t) => (
                 <div className="flex items-center gap-4">
@@ -325,6 +351,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             }
         }
 
+        socket.on(SocketEvent.JOIN_ACCEPTED, handleJoinAccepted)
         socket.on("RTC_CALL_INVITE", handleInvite)
         socket.on("RTC_READY_TO_RECEIVE", handleReady)
         socket.on(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)
@@ -332,6 +359,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         socket.on(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
 
         return () => {
+            socket.off(SocketEvent.JOIN_ACCEPTED, handleJoinAccepted)
             socket.off("RTC_CALL_INVITE")
             socket.off("RTC_READY_TO_RECEIVE")
             socket.off(SocketEvent.RECEIVE_RTC_OFFER)
@@ -350,7 +378,9 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                 toggleMute,
                 toggleCamera,
                 startCall,
+                joinCall,
                 endCall,
+                isCallActive,
             }}
         >
             {children}

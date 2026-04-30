@@ -83,8 +83,43 @@ function Sidebar() {
                     icon={viewIcons[VIEWS.SETTINGS]}
                 />
 
-                {/* GitHub Link - Strategic placement at bottom of sidebar */}
+                {/* Activity State (Drawing) - Strategic placement before GitHub */}
                 <div className="flex h-fit items-center justify-center mt-auto mb-2 md:mb-4">
+                    <div className="relative flex flex-1 min-w-0 flex-col items-center justify-center">
+                        <button
+                            className="flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ease-in-out hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)] text-gray-400 hover:text-white"
+                            onClick={changeState}
+                            onMouseEnter={() => setShowTooltip(true)}
+                            data-tooltip-id="activity-state-tooltip"
+                            data-tooltip-content={
+                                activityState === ACTIVITY_STATE.CODING
+                                    ? "Switch to Drawing Mode"
+                                    : "Switch to Coding Mode"
+                            }
+                        >
+                            {activityState === ACTIVITY_STATE.CODING ? (
+                                <MdOutlineDraw size={30} />
+                            ) : (
+                                <IoCodeSlash size={30} />
+                            )}
+                        </button>
+                        {showTooltip && (
+                            <Tooltip
+                                id="activity-state-tooltip"
+                                place="right"
+                                offset={15}
+                                className="!z-50"
+                                style={tooltipStyles}
+                                noArrow={false}
+                                positionStrategy="fixed"
+                                float={true}
+                            />
+                        )}
+                    </div>
+                </div>
+
+                {/* GitHub Link - End of the toolbar */}
+                <div className="flex h-fit items-center justify-center mb-2 md:mb-4">
                     <a
                         href="https://github.com/ameyasharma-ai/inline-frontend"
                         target="_blank"
@@ -95,42 +130,7 @@ function Sidebar() {
                         <IoLogoGithub size={isMobile ? 22 : 28} className="group-hover:text-primary transition-colors" />
                     </a>
                 </div>
-
-                {/* Button to change activity state coding or drawing */}
-                <div className="flex h-fit items-center justify-center mb-2 md:mb-4">
-                    <div className="relative flex flex-1 min-w-0 flex-col items-center justify-center">
-            <button
-                onClick={changeState}
-                onMouseEnter={() => setShowTooltip(true)} // Show tooltip again on hover
-                className="flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ease-in-out hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)] text-gray-400 hover:text-white"
-                        data-tooltip-id="activity-state-tooltip"
-                        data-tooltip-content={
-                            activityState === ACTIVITY_STATE.CODING
-                                ? "Switch to Drawing Mode"
-                                : "Switch to Coding Mode"
-                        }
-                    >
-                        {activityState === ACTIVITY_STATE.CODING ? (
-                            <MdOutlineDraw size={30} />
-                        ) : (
-                            <IoCodeSlash size={30} />
-                        )}
-                    </button>
-                    {showTooltip && (
-                        <Tooltip
-                            id="activity-state-tooltip"
-                            place="right"
-                            offset={15}
-                            className="!z-50"
-                            style={tooltipStyles}
-                            noArrow={false}
-                            positionStrategy="fixed"
-                            float={true}
-                        />
-                    )}
-                </div>
             </div>
-        </div>
             <div
                 className="absolute left-0 top-0 z-20 w-full flex-col bg-background md:static md:min-w-[300px] transition-colors duration-300"
                 style={isSidebarOpen ? {} : { display: "none" }}

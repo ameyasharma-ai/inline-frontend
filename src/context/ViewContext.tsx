@@ -36,13 +36,13 @@ function ViewContextProvider({ children }: { children: ReactNode }) {
         [VIEWS.VIDEO]: <VideoView />,
     })
     const [viewIcons] = useState({
-        [VIEWS.FILES]: <LuFiles size={28} />,
-        [VIEWS.CLIENTS]: <PiUsers size={30} />,
-        [VIEWS.SETTINGS]: <IoSettingsOutline size={28} />,
-        [VIEWS.CHATS]: <PiChats size={30} />,
-        [VIEWS.COPILOT]: <LuSparkles size={28} />,
-        [VIEWS.RUN]: <PiPlay size={28} />,
-        [VIEWS.VIDEO]: <LuVideo size={28} />,
+        [VIEWS.FILES]: <LuFiles size={isMobile ? 22 : 28} />,
+        [VIEWS.CLIENTS]: <PiUsers size={isMobile ? 24 : 30} />,
+        [VIEWS.SETTINGS]: <IoSettingsOutline size={isMobile ? 22 : 28} />,
+        [VIEWS.CHATS]: <PiChats size={isMobile ? 24 : 30} />,
+        [VIEWS.COPILOT]: <LuSparkles size={isMobile ? 22 : 28} />,
+        [VIEWS.RUN]: <PiPlay size={isMobile ? 22 : 28} />,
+        [VIEWS.VIDEO]: <LuVideo size={isMobile ? 22 : 28} />,
     })
 
     return (

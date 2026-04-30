@@ -13,9 +13,9 @@ const App = () => {
                     <Route path="/editor/:roomId" element={<EditorPage />} />
                     <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
+                <GitHubCorner />
             </Router>
             <Toast /> {/* Toast component from react-hot-toast */}
-            <GitHubCorner />
         </>
     )
 }

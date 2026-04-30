@@ -26,11 +26,11 @@ const ViewButton = ({ viewName, icon }: ViewButtonProps) => {
     }
 
     return (
-        <div className="relative flex flex-col items-center">
+        <div className="relative flex flex-1 min-w-0 flex-col items-center justify-center">
             <button
                 onClick={() => handleViewClick(viewName)}
                 onMouseEnter={() => setShowTooltip(true)} // Show tooltip again on hover
-                className={`${buttonStyles.base} ${activeView === viewName ? buttonStyles.active : buttonStyles.hover}`}
+                className={`${buttonStyles.base} flex-shrink w-full ${activeView === viewName ? buttonStyles.active : buttonStyles.hover}`}
                 {...(showTooltip && {
                     "data-tooltip-id": `tooltip-${viewName}`,
                     "data-tooltip-content": viewName,

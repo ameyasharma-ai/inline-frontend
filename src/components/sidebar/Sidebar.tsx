@@ -25,8 +25,10 @@ function Sidebar() {
     const { minHeightReached } = useResponsive()
     const { activityState, setActivityState } = useAppContext()
     const { socket } = useSocket()
-    const { isMobile } = useWindowDimensions()
+    const { isMobile, width } = useWindowDimensions()
     const [showTooltip, setShowTooltip] = useState(true)
+
+    console.log(`[LAYOUT-DEBUG] Sidebar render. Width: ${width}, isMobile: ${isMobile}`)
 
     const changeState = () => {
         setShowTooltip(false)
@@ -46,7 +48,7 @@ function Sidebar() {
         <aside className="flex w-full md:h-full md:max-h-full md:min-h-full md:w-auto">
             <div
                 className={cn(
-                    "fixed bottom-0 left-0 z-50 flex h-[60px] w-full items-center justify-between border-t border-border bg-background px-4 md:static md:h-full md:w-[60px] md:min-w-[60px] md:flex-col md:gap-2 md:border-r md:border-t-0 md:p-3 md:pt-4 transition-colors duration-300",
+                    "fixed bottom-0 left-0 z-50 flex h-[60px] w-full items-center justify-between overflow-hidden border-t border-border bg-background px-1 md:static md:h-full md:w-[60px] md:min-w-[60px] md:flex-col md:gap-2 md:border-r md:border-t-0 md:p-3 md:pt-4 transition-colors duration-300",
                     {
                         hidden: minHeightReached,
                     },
@@ -83,10 +85,11 @@ function Sidebar() {
 
                 {/* Button to change activity state coding or drawing */}
                 <div className="flex h-fit items-center justify-center mt-auto md:mb-4">
-                    <button
-                        className="flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ease-in-out hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)] text-gray-400 hover:text-white"
-                        onClick={changeState}
-                        onMouseEnter={() => setShowTooltip(true)}
+                    <div className="relative flex flex-1 min-w-0 flex-col items-center justify-center">
+            <button
+                onClick={changeState}
+                onMouseEnter={() => setShowTooltip(true)} // Show tooltip again on hover
+                className="flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ease-in-out hover:bg-white/10 hover:shadow-[0_0_10px_rgba(255,255,255,0.05)] text-gray-400 hover:text-white"
                         data-tooltip-id="activity-state-tooltip"
                         data-tooltip-content={
                             activityState === ACTIVITY_STATE.CODING

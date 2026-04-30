@@ -39,6 +39,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
         drawingData,
         setDrawingData,
     } = useAppContext()
+    console.log(`[SOCKET-DEBUG] SocketProvider render. Current user: ${currentUser?.username}`)
     const socket: Socket = useMemo(
         () =>
             io(BACKEND_URL, {
@@ -86,6 +87,7 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     const handleJoiningAccept = useCallback(
         ({ user, users }: { user: User; users: RemoteUser[] }) => {
+            console.log(`[DEDUP-DEBUG] handleJoiningAccept for user: ${user.username}, full list size: ${users.length}`)
             setCurrentUser({ ...user, password: currentUser.password })
             setUsers(users)
             toast.dismiss()
@@ -104,9 +106,14 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     const handleUserJoined = useCallback(
         ({ user }: { user: RemoteUser }) => {
+            console.log(`[DEDUP-DEBUG] Received USER_JOINED for: ${user.username} (${user.socketId})`)
             setUsers((prev) => {
                 const exists = prev.some((u) => u.socketId === user.socketId)
-                if (exists) return prev
+                console.log(`[DEDUP-DEBUG] Current users:`, prev.map(u => u.username))
+                if (exists) {
+                    console.warn(`[DEDUP-DEBUG] Duplicate user detected, ignoring: ${user.username}`)
+                    return prev
+                }
                 toast.success(`${user.username} joined the room`)
                 return [...prev, user]
             })

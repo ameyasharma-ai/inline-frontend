@@ -7,7 +7,7 @@ import useWindowDimensions from "@/hooks/useWindowDimensions"
 import { ACTIVITY_STATE } from "@/types/app"
 import { SocketEvent } from "@/types/socket"
 import { VIEWS } from "@/types/view"
-import { IoCodeSlash } from "react-icons/io5"
+import { IoCodeSlash, IoLogoGithub } from "react-icons/io5"
 import { MdOutlineDraw } from "react-icons/md"
 import cn from "classnames"
 import { Tooltip } from 'react-tooltip'
@@ -83,8 +83,21 @@ function Sidebar() {
                     icon={viewIcons[VIEWS.SETTINGS]}
                 />
 
+                {/* GitHub Link - Strategic placement at bottom of sidebar */}
+                <div className="flex h-fit items-center justify-center mt-auto mb-2 md:mb-4">
+                    <a
+                        href="https://github.com/ameyasharma-ai/inline-frontend"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ease-in-out hover:bg-white/10 text-gray-400 hover:text-white group"
+                        title="Star on GitHub"
+                    >
+                        <IoLogoGithub size={isMobile ? 22 : 28} className="group-hover:text-primary transition-colors" />
+                    </a>
+                </div>
+
                 {/* Button to change activity state coding or drawing */}
-                <div className="flex h-fit items-center justify-center mt-auto md:mb-4">
+                <div className="flex h-fit items-center justify-center mb-2 md:mb-4">
                     <div className="relative flex flex-1 min-w-0 flex-col items-center justify-center">
             <button
                 onClick={changeState}

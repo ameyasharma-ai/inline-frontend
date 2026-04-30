@@ -104,8 +104,12 @@ const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     const handleUserJoined = useCallback(
         ({ user }: { user: RemoteUser }) => {
-            toast.success(`${user.username} joined the room`)
-            setUsers((prev) => [...prev, user])
+            setUsers((prev) => {
+                const exists = prev.some((u) => u.socketId === user.socketId)
+                if (exists) return prev
+                toast.success(`${user.username} joined the room`)
+                return [...prev, user]
+            })
         },
         [setUsers],
     )

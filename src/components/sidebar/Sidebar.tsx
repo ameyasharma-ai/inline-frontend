@@ -46,7 +46,7 @@ function Sidebar() {
         <aside className="flex w-full md:h-full md:max-h-full md:min-h-full md:w-auto">
             <div
                 className={cn(
-                    "fixed bottom-0 left-0 z-50 flex h-[60px] w-full gap-1 items-center self-end overflow-x-auto border-t border-border bg-background px-2 py-1 md:static md:h-full md:w-[60px] md:min-w-[60px] md:flex-col md:gap-2 md:border-r md:border-t-0 md:p-3 md:pt-4 transition-colors duration-300 no-scrollbar",
+                    "fixed bottom-0 left-0 z-50 flex h-[60px] w-full items-center justify-between border-t border-border bg-background px-4 md:static md:h-full md:w-[60px] md:min-w-[60px] md:flex-col md:gap-2 md:border-r md:border-t-0 md:p-3 md:pt-4 transition-colors duration-300",
                     {
                         hidden: minHeightReached,
                     },

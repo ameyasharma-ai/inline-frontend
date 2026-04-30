@@ -23,6 +23,8 @@ import axios from "axios"
 import { collaborativeHighlighting, updateRemoteUsers } from "./collaborativeHighlighting"
 import useWindowDimensions from "@/hooks/useWindowDimensions"
 import { LuSparkles } from "react-icons/lu"
+import { useViews } from "@/context/ViewContext"
+import { VIEWS } from "@/types/view"
 
 function Editor() {
     const { users, currentUser } = useAppContext()
@@ -31,6 +33,7 @@ function Editor() {
     const { socket } = useSocket()
     const { viewHeight } = useResponsive()
     const { isMobile } = useWindowDimensions()
+    const { activeView } = useViews()
     const [timeOut, setTimeOut] = useState(setTimeout(() => {}, 0))
     const filteredUsers = useMemo(
         () => users.filter((u) => u.username !== currentUser.username),
@@ -210,22 +213,24 @@ function Editor() {
                     height: "100%",
                 }}
             />
-            {isMobile ? (
-                <button 
-                    onClick={() => {
-                        if (editorRef.current?.view) {
-                            startCompletion(editorRef.current.view)
-                        }
-                    }}
-                    className="absolute bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-[0_0_20px_rgba(168,85,247,0.3)] backdrop-blur-lg active:scale-95 transition-all"
-                >
-                    <LuSparkles className="animate-pulse" />
-                    <span>Ask AI</span>
-                </button>
-            ) : (
-                <div className="pointer-events-none absolute bottom-6 right-6 z-50 flex items-center gap-2 rounded-full border border-primary/30 bg-darkHover/80 px-4 py-2 text-sm text-primary shadow-xl backdrop-blur-md">
-                    <span>✨ Press <kbd className="rounded bg-primary/20 px-1.5 py-0.5 font-sans font-semibold text-white">Ctrl</kbd> + <kbd className="rounded bg-primary/20 px-1.5 py-0.5 font-sans font-semibold text-white">Space</kbd> for AI</span>
-                </div>
+            {activeView === VIEWS.FILES && (
+                isMobile ? (
+                    <button 
+                        onClick={() => {
+                            if (editorRef.current?.view) {
+                                startCompletion(editorRef.current.view)
+                            }
+                        }}
+                        className="absolute bottom-4 right-4 z-50 flex items-center gap-2 rounded-full border border-primary/40 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary shadow-[0_0_20px_rgba(168,85,247,0.3)] backdrop-blur-lg active:scale-95 transition-all"
+                    >
+                        <LuSparkles className="animate-pulse" />
+                        <span>Ask AI</span>
+                    </button>
+                ) : (
+                    <div className="pointer-events-none absolute bottom-6 right-6 z-50 flex items-center gap-2 rounded-full border border-primary/30 bg-darkHover/80 px-4 py-2 text-sm text-primary shadow-xl backdrop-blur-md">
+                        <span>✨ Press <kbd className="rounded bg-primary/20 px-1.5 py-0.5 font-sans font-semibold text-white">Ctrl</kbd> + <kbd className="rounded bg-primary/20 px-1.5 py-0.5 font-sans font-semibold text-white">Space</kbd> for AI</span>
+                    </div>
+                )
             )}
         </div>
     )

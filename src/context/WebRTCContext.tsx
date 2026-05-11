@@ -78,9 +78,10 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
     }, [])
 
     const createPeerConnection = useCallback((targetId: string, stream: MediaStream) => {
-        // If connection exists, close it
-        if (peerConnections.current[targetId]) {
-            peerConnections.current[targetId].close()
+        // If connection exists and is in a good state, don't recreate it
+        if (peerConnections.current[targetId] && 
+            peerConnections.current[targetId].signalingState !== "closed") {
+            return peerConnections.current[targetId]
         }
 
         const pc = new RTCPeerConnection(configuration)
@@ -320,9 +321,9 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                 const stream = localStreamRef.current
                 if (!stream || !socket.id) return
 
-                const pc = peerConnections.current[senderId]
+                const pc = peerConnections.current[senderId] || createPeerConnection(senderId, stream)
                 const polite = socket.id.localeCompare(senderId) > 0
-                const offerCollision = makingOffer.current[senderId] || pc?.signalingState !== "stable"
+                const offerCollision = makingOffer.current[senderId] || pc.signalingState !== "stable"
                 
                 ignoreOffer.current[senderId] = !polite && offerCollision
                 if (ignoreOffer.current[senderId]) {
@@ -330,13 +331,21 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
                     return
                 }
 
-                const activePc = pc || createPeerConnection(senderId, stream)
-                await activePc.setRemoteDescription(offer)
+                // Perfect Negotiation: if collision, roll back local offer before accepting remote offer
+                if (offerCollision) {
+                    await Promise.all([
+                        pc.setLocalDescription({ type: "rollback" }),
+                        pc.setRemoteDescription(offer)
+                    ])
+                } else {
+                    await pc.setRemoteDescription(offer)
+                }
+
                 await processIceCandidates(senderId)
-                await activePc.setLocalDescription()
+                await pc.setLocalDescription()
                 
                 socket.emit(SocketEvent.SEND_RTC_ANSWER, {
-                    answer: activePc.localDescription,
+                    answer: pc.localDescription,
                     targetId: senderId,
                 })
             } catch (err) {

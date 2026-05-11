@@ -172,22 +172,28 @@ const RemoteParticipant = ({ stream, socketId }: { stream: MediaStream; socketId
     }, [stream])
 
     return (
-        <div className="relative group aspect-video rounded-2xl overflow-hidden bg-darkHover border border-white/5 shadow-2xl">
-            {isVideoDisabled ? (
-                <div className="flex items-center justify-center h-full bg-gradient-to-br from-darkHover to-black">
-                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center text-white/70 text-2xl font-bold border border-white/10 uppercase">
+        <div className="relative group aspect-video rounded-2xl overflow-hidden bg-darkHover border border-white/5 shadow-2xl transition-all duration-500">
+            {/* Avatar / Placeholder - Shown when video is disabled or unavailable */}
+            {isVideoDisabled && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-gradient-to-br from-darkHover to-black animate-fade-in">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full border border-white/10 bg-white/5 text-3xl font-bold uppercase text-white/70 shadow-2xl backdrop-blur-sm">
                         {participant?.username?.charAt(0) || "U"}
                     </div>
+                    {/* Subtle pulse effect for active speakers could be added here */}
                 </div>
-            ) : (
-                <video
-                    ref={videoRef}
-                    autoPlay
-                    playsInline
-                    className="w-full h-full object-cover"
-                />
             )}
-            <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-medium text-white border border-white/10">
+            
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className={cn(
+                    "h-full w-full object-cover transition-opacity duration-500",
+                    isVideoDisabled ? "opacity-0" : "opacity-100"
+                )}
+            />
+            <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2 rounded-lg border border-white/10 bg-black/40 px-3 py-1.5 text-xs font-medium text-white backdrop-blur-md">
+                <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
                 {participant?.username || "Guest"}
             </div>
         </div>

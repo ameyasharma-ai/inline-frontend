@@ -160,12 +160,21 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         try {
             let stream = localStreamRef.current
             if (!stream) {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: !voiceOnly, 
-                    audio: true 
-                })
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: !voiceOnly, 
+                        audio: true 
+                    })
+                    setIsCameraOff(voiceOnly)
+                } catch (err) {
+                    console.warn("[WebRTC] Failed to get video, falling back to audio only", err)
+                    stream = await navigator.mediaDevices.getUserMedia({ 
+                        video: false, 
+                        audio: true 
+                    })
+                    setIsCameraOff(true)
+                }
                 setLocalStream(stream)
-                setIsCameraOff(voiceOnly)
             }
             
             setIsCallActive(true)
@@ -175,7 +184,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error) {
             console.error("[WebRTC] Failed to start call:", error)
-            toast.error("Could not access media devices")
+            toast.error("Could not access audio/video devices")
         }
     }, [socket])
 
@@ -184,8 +193,14 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         try {
             let stream = localStreamRef.current
             if (!stream) {
-                // Check if others are in voice-only or video
-                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+                    setIsCameraOff(false)
+                } catch (err) {
+                    console.warn("[WebRTC] Failed to get video, falling back to audio only", err)
+                    stream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+                    setIsCameraOff(true)
+                }
                 setLocalStream(stream)
             }
             
@@ -203,7 +218,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error) {
             console.error("[WebRTC] Failed to join call:", error)
-            toast.error("Could not access media devices")
+            toast.error("Could not access audio/video devices")
         }
     }, [socket])
 
@@ -220,7 +235,12 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
         ignoreOffer.current = {}
         setRemoteStreams({})
         setIsCallActive(false)
-    }, [])
+
+        const roomId = usersRef.current[0]?.roomId
+        if (roomId) {
+            socket.emit("RTC_CALL_END", { roomId })
+        }
+    }, [socket])
 
     // Prune connections when users leave
     useEffect(() => {
@@ -351,12 +371,19 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             }
         }
 
+        const handleCallTerminated = () => {
+            console.log("[WebRTC] Call terminated (all participants left)")
+            setIsCallActive(false)
+            toast.dismiss("active-call")
+        }
+
         socket.on(SocketEvent.JOIN_ACCEPTED, handleJoinAccepted)
         socket.on("RTC_CALL_INVITE", handleInvite)
         socket.on("RTC_READY_TO_RECEIVE", handleReady)
         socket.on(SocketEvent.RECEIVE_RTC_OFFER, handleOffer)
         socket.on(SocketEvent.RECEIVE_RTC_ANSWER, handleAnswer)
         socket.on(SocketEvent.RECEIVE_ICE_CANDIDATE, handleIceCandidate)
+        socket.on("RTC_CALL_TERMINATED", handleCallTerminated)
 
         return () => {
             socket.off(SocketEvent.JOIN_ACCEPTED, handleJoinAccepted)
@@ -365,6 +392,7 @@ export const WebRTCProvider = ({ children }: { children: ReactNode }) => {
             socket.off(SocketEvent.RECEIVE_RTC_OFFER)
             socket.off(SocketEvent.RECEIVE_RTC_ANSWER)
             socket.off(SocketEvent.RECEIVE_ICE_CANDIDATE)
+            socket.off("RTC_CALL_TERMINATED")
         }
     }, [socket, createPeerConnection, joinCall, processIceCandidates])
 

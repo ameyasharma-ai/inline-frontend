@@ -1,16 +1,14 @@
-import { useSettings } from "@/context/SettingContext"
 import useWindowDimensions from "@/hooks/useWindowDimensions"
 import { FaGithub } from "react-icons/fa"
 
 import { useLocation } from "react-router-dom"
 
 function GitHubCorner() {
-    const { showGitHubCorner } = useSettings()
     const { width } = useWindowDimensions()
     const location = useLocation()
 
     // Only show the prominent FAB on the Home Page
-    if (!showGitHubCorner || width < 768 || location.pathname !== "/") return null
+    if (width < 768 || location.pathname !== "/") return null
 
     return (
         <a
